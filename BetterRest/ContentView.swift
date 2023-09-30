@@ -9,15 +9,36 @@ import CoreML
 import SwiftUI
 
 struct ContentView: View {
-    @State private var wakeup = defaultWakeTime
-    @State private var sleepAmount = 8.0
-    @State private var coffeeAmount = 1
+    @State private var wakeup = defaultWakeTime {
+        didSet {
+            calculateBedtime()
+        }
+    }
+    @State private var sleepAmount = 8.0 {
+        didSet {
+            calculateBedtime()
+        }
+    }
+    @State private var coffeeAmount = 1 {
+        didSet {
+            calculateBedtime()
+        }
+    }
     
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
     
+    
+    
     static var defaultWakeTime : Date {
+        var components = DateComponents()
+        components.hour = 7
+        components.minute = 0
+        return Calendar.current.date(from: components) ?? Date.now
+    }
+    
+     var recommendedBedTime : Date {
         var components = DateComponents()
         components.hour = 7
         components.minute = 0
@@ -28,35 +49,63 @@ struct ContentView: View {
         NavigationView {
             Form {
                 
-                VStack(alignment: .leading, spacing: 8) {
+                Section{
                     Text("When do you want to wake up?")
                         .font(.headline)
-                    DatePicker("Pick a date", selection: $wakeup, in: Date.now..., displayedComponents: .hourAndMinute)
+                    DatePicker("Pick a date", selection: $wakeup, displayedComponents: .hourAndMinute)
                         .labelsHidden()
                 }
                 
-                VStack(alignment: .leading, spacing: 8) {
+                Section {
                     Text("How long do you want to sleep?")
                         .font(.headline)
                     Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
                 }
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Daily coffee intake")
-                        .font(.headline)
-                    Stepper(coffeeAmount == 1 ? "1 cup" : "\(coffeeAmount) cups", value: $coffeeAmount, in: 1...20)
+                Section {
+                    Picker ("Daily coffee intake", selection: $coffeeAmount) {
+                        ForEach(1..<11) { coffee in
+                            Text (coffee == 1 ? "1 cup" : "\(coffee) cups")
+                        }
+                    }
+                    
                 }
                 
-                } //Vstack
+                VStack (alignment: .center, spacing: 8) {
+                    Text("Ideal bed time")
+                        .font(.body)
+                        .foregroundColor(.gray)
+                    Text(alertMessage)
+                        .font(.largeTitle)
+                        .foregroundColor(.green)
+                } // Vstack
+                .frame(maxWidth: .infinity)
+                .padding()
+
+                
+                } //Form
             .navigationTitle("Better Rest")
-            .toolbar {
-                Button("Calculate", action: calculateBedtime)
-            }
-            .alert(alertTitle, isPresented: $showAlert) {
-                Button("OK") { }
-            } message: {
-                Text(alertMessage)
-            }
+            .onAppear {
+                           // Call calculateBedtime when the view appears
+                           calculateBedtime()
+                       }
+            .onChange(of: wakeup, perform: { _ in
+                            calculateBedtime()
+                        })
+                        .onChange(of: sleepAmount, perform: { _ in
+                            calculateBedtime()
+                        })
+                        .onChange(of: coffeeAmount, perform: { _ in
+                            calculateBedtime()
+                        })
+//            .toolbar {
+//                Button("Calculate", action: calculateBedtime)
+//            }
+//            .alert(alertTitle, isPresented: $showAlert) {
+//                Button("OK") { }
+//            } message: {
+//                Text(alertMessage)
+//            }
             
         } //Nav View
     }
@@ -84,6 +133,14 @@ struct ContentView: View {
         
         showAlert = true
     } //calculateBedtime function
+    
+    
+    //get recommended time
+    func getTimeStringFromDate(date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "h:mm a" // Use the desired time format
+        return dateFormatter.string(from: date)
+    }
 }
 
 struct ContentView_Previews: PreviewProvider {
